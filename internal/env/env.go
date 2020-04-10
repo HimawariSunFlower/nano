@@ -39,6 +39,9 @@ var (
 	Debug       bool                     // enable Debug
 	WSPath      string                   // WebSocket path(eg: ws://127.0.0.1/WSPath)
 
+	ProtoRoute bool //Proto struct name Route
+	RouteDict  map[string]uint16
+
 	// timerPrecision indicates the precision of timer, default is time.Second
 	TimerPrecision = time.Second
 
@@ -57,4 +60,5 @@ func init() {
 	Debug = false
 	CheckOrigin = func(_ *http.Request) bool { return true }
 	Serializer = protobuf.NewSerializer()
+	RouteDict = make(map[string]uint16)
 }

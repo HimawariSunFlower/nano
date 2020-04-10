@@ -57,6 +57,7 @@ func cache() {
 	data, err := json.Marshal(map[string]interface{}{
 		"code": 200,
 		"sys":  map[string]float64{"heartbeat": env.Heartbeat.Seconds()},
+		"dict": env.RouteDict,
 	})
 	if err != nil {
 		panic(err)
@@ -74,8 +75,9 @@ func cache() {
 }
 
 type LocalHandler struct {
-	localServices map[string]*component.Service // all registered service
-	localHandlers map[string]*component.Handler // all handler method
+	localServices        map[string]*component.Service // all registered service
+	localHandlers        map[string]*component.Handler // all handler method
+	localHandlersArgName map[string]*component.Handler // all handler method 参数名称映射
 
 	mu             sync.RWMutex
 	remoteServices map[string][]*clusterpb.MemberInfo
@@ -86,11 +88,12 @@ type LocalHandler struct {
 
 func NewHandler(currentNode *Node, pipeline pipeline.Pipeline) *LocalHandler {
 	h := &LocalHandler{
-		localServices:  make(map[string]*component.Service),
-		localHandlers:  make(map[string]*component.Handler),
-		remoteServices: map[string][]*clusterpb.MemberInfo{},
-		pipeline:       pipeline,
-		currentNode:    currentNode,
+		localServices:        make(map[string]*component.Service),
+		localHandlers:        make(map[string]*component.Handler),
+		localHandlersArgName: make(map[string]*component.Handler),
+		remoteServices:       map[string][]*clusterpb.MemberInfo{},
+		pipeline:             pipeline,
+		currentNode:          currentNode,
 	}
 
 	return h
@@ -109,10 +112,25 @@ func (h *LocalHandler) register(comp component.Component, opts []component.Optio
 
 	// register all localHandlers
 	h.localServices[s.Name] = s
+	doubleNames := make([]string, 0)
 	for name, handler := range s.Handlers {
 		n := fmt.Sprintf("%s.%s", s.Name, name)
-		log.Println("Register local handler", n)
-		h.localHandlers[n] = handler
+		if env.ProtoRoute {
+			//以控制器第二个参数 结构体名称,为路由
+			argTypeName := handler.Type.Elem().Name()
+			if _, exist := h.localHandlersArgName[argTypeName]; !exist {
+				log.Println(fmt.Sprintf("Proto Register local handler %s-%s", s.Name, argTypeName))
+				h.localHandlersArgName[argTypeName] = handler
+			} else {
+				doubleNames = append(doubleNames, n+"("+argTypeName+")")
+			}
+		} else {
+			log.Println("Register local handler", n)
+			h.localHandlers[n] = handler
+		}
+	}
+	if len(doubleNames) > 0 {
+		log.Fatalf("重复消息协议 %v", doubleNames)
 	}
 	return nil
 }
@@ -373,12 +391,20 @@ func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
 		log.Println("Invalid message type: " + msg.Type.String())
 		return
 	}
-
-	handler, found := h.localHandlers[msg.Route]
-	if !found {
-		h.remoteProcess(agent.session, msg, false)
+	if env.ProtoRoute {
+		handler, found := h.localHandlersArgName[msg.Route]
+		if !found {
+			h.remoteProcess(agent.session, msg, false)
+		} else {
+			h.localProcess(handler, lastMid, agent.session, msg)
+		}
 	} else {
-		h.localProcess(handler, lastMid, agent.session, msg)
+		handler, found := h.localHandlers[msg.Route]
+		if !found {
+			h.remoteProcess(agent.session, msg, false)
+		} else {
+			h.localProcess(handler, lastMid, agent.session, msg)
+		}
 	}
 }
 
@@ -433,19 +459,25 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 			}
 		}
 	}
+	var serCase *component.Service
 
-	index := strings.LastIndex(msg.Route, ".")
-	if index < 0 {
-		log.Println(fmt.Sprintf("nano/handler: invalid route %s", msg.Route))
-		return
+	if handler.ParentService != nil {
+		serCase = handler.ParentService
+	} else {
+		index := strings.LastIndex(msg.Route, ".")
+		if index < 0 {
+			log.Println(fmt.Sprintf("nano/handler: invalid route %s", msg.Route))
+			return
+		}
+		// A message can be dispatch to global thread or a user customized thread
+		service := msg.Route[:index]
+		serCase = h.localServices[service]
 	}
 
-	// A message can be dispatch to global thread or a user customized thread
-	service := msg.Route[:index]
-	if s, found := h.localServices[service]; found && s.SchedName != "" {
-		sched := session.Value(s.SchedName)
+	if serCase.SchedName != "" {
+		sched := session.Value(serCase.SchedName)
 		if sched == nil {
-			log.Println(fmt.Sprintf("nanl/handler: cannot found `schedular.LocalScheduler` by %s", s.SchedName))
+			log.Println(fmt.Sprintf("nanl/handler: cannot found `schedular.LocalScheduler` by %s", serCase.SchedName))
 			return
 		}
 

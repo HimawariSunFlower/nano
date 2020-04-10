@@ -29,10 +29,11 @@ type (
 	//Handler represents a message.Message's handler's meta information.
 	//Handler represents a message.Message's handler's meta information.
 	Handler struct {
-		Receiver reflect.Value  // receiver of method
-		Method   reflect.Method // method stub
-		Type     reflect.Type   // low-level type of method
-		IsRawArg bool           // whether the data need to serialize
+		Receiver      reflect.Value  // receiver of method
+		Method        reflect.Method // method stub
+		Type          reflect.Type   // low-level type of method
+		IsRawArg      bool           // whether the data need to serialize
+		ParentService *Service
 	}
 
 	// Service implements a specific service, some of it's methods will be
@@ -84,7 +85,7 @@ func (s *Service) suitableHandlerMethods(typ reflect.Type) map[string]*Handler {
 			if s.Options.nameFunc != nil {
 				mn = s.Options.nameFunc(mn)
 			}
-			methods[mn] = &Handler{Method: method, Type: mt.In(2), IsRawArg: raw}
+			methods[mn] = &Handler{Method: method, Type: mt.In(2), IsRawArg: raw, ParentService: s}
 		}
 	}
 	return methods

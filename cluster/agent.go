@@ -122,6 +122,12 @@ func (a *agent) Push(route string, v interface{}) error {
 		return ErrBufferExceed
 	}
 
+	if env.ProtoRoute {
+		//以发送对象结构体名称,为发送路由,以方便客户端proto解析
+		typ := reflect.TypeOf(v)
+		route = typ.Elem().Name()
+	}
+
 	if env.Debug {
 		switch d := v.(type) {
 		case []byte:

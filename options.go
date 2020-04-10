@@ -84,9 +84,17 @@ func WithDebugMode() Option {
 	}
 }
 
+// WithProtoMode
+func WithProtoRoute() Option {
+	return func(_ *cluster.Options) {
+		env.ProtoRoute = true
+	}
+}
+
 // SetDictionary sets routes map
 func WithDictionary(dict map[string]uint16) Option {
 	return func(_ *cluster.Options) {
+		env.RouteDict = dict
 		message.SetDictionary(dict)
 	}
 }
