@@ -56,8 +56,7 @@ type rpcHandler func(session *session.Session, msg *message.Message, noCopy bool
 func cache() {
 	data, err := json.Marshal(map[string]interface{}{
 		"code": 200,
-		"sys":  map[string]float64{"heartbeat": env.Heartbeat.Seconds()},
-		"dict": env.RouteDict,
+		"sys":  map[string]interface{}{"heartbeat": env.Heartbeat.Seconds(), "dict": env.RouteDict},
 	})
 	if err != nil {
 		panic(err)
