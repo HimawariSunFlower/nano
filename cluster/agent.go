@@ -121,8 +121,9 @@ func (a *agent) Push(route string, v interface{}) error {
 	if len(a.chSend) >= agentWriteBacklog {
 		return ErrBufferExceed
 	}
-
-	if env.ProtoRoute {
+	//Group 群发消息,提前编码,使用参数route 为路由
+	_, ok := v.([]byte)
+	if env.ProtoRoute && !ok {
 		//以发送对象结构体名称,为发送路由,以方便客户端proto解析
 		typ := reflect.TypeOf(v)
 		route = typ.Elem().Name()
