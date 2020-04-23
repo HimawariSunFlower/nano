@@ -91,6 +91,13 @@ func WithProtoRoute() Option {
 	}
 }
 
+// WithTestTcp
+func WithTestTcp() Option {
+	return func(_ *cluster.Options) {
+		env.TestTcp = true
+	}
+}
+
 // SetDictionary sets routes map
 func WithDictionary(dict map[string]uint16) Option {
 	return func(_ *cluster.Options) {

@@ -42,6 +42,8 @@ var (
 	ProtoRoute bool //Proto struct name Route
 	RouteDict  map[string]uint16
 
+	TestTcp bool
+
 	// timerPrecision indicates the precision of timer, default is time.Second
 	TimerPrecision = time.Second
 
