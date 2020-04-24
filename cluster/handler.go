@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"reflect"
@@ -54,9 +55,31 @@ var (
 type rpcHandler func(session *session.Session, msg *message.Message, noCopy bool)
 
 func cache() {
+
+	sysMap := map[string]interface{}{
+		"heartbeat": env.Heartbeat.Seconds(),
+		"dict":      env.RouteDict,
+		//"protos":
+	}
+
+	protoMsgJsonData, err := ioutil.ReadFile("./configs/proto_msg.json")
+	if err == nil {
+		log.Println("Register proto json ./configs/proto_msg.json")
+		var mapResult map[string]interface{}
+		//fmt.Printf("%s\n", protoMsgJsonData)
+		err = json.Unmarshal(protoMsgJsonData, &mapResult)
+
+		d1 := mapResult["nested"].(map[string]interface{})
+		d2 := d1["GNet"].(map[string]interface{})
+		d3 := d2["nested"].(map[string]interface{})
+		sysMap["protos"] = map[string]interface{}{
+			"server": d3,
+		}
+	}
+
 	data, err := json.Marshal(map[string]interface{}{
 		"code": 200,
-		"sys":  map[string]interface{}{"heartbeat": env.Heartbeat.Seconds(), "dict": env.RouteDict},
+		"sys":  sysMap,
 	})
 	if err != nil {
 		panic(err)
