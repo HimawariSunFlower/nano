@@ -65,8 +65,8 @@ func cache() {
 	protoMsgJson, err := ioutil.ReadFile("./configs/proto_pomelo.json")
 	if err == nil {
 		log.Println("Register proto json ./configs/proto_msg.json")
-		msgJson := map[string]interface{}{}
-		json.Unmarshal(protoMsgJson, msgJson)
+		var msgJson map[string]interface{}
+		json.Unmarshal(protoMsgJson, &msgJson)
 		sysMap["protos"] = map[string]interface{}{
 			"server": msgJson,
 		}
