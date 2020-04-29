@@ -62,18 +62,11 @@ func cache() {
 		//"protos":
 	}
 
-	protoMsgJsonData, err := ioutil.ReadFile("./configs/proto_msg.json")
+	protoMsgJson, err := ioutil.ReadFile("./configs/proto_pomelo.json")
 	if err == nil {
 		log.Println("Register proto json ./configs/proto_msg.json")
-		var mapResult map[string]interface{}
-		//fmt.Printf("%s\n", protoMsgJsonData)
-		err = json.Unmarshal(protoMsgJsonData, &mapResult)
-
-		d1 := mapResult["nested"].(map[string]interface{})
-		d2 := d1["GNet"].(map[string]interface{})
-		d3 := d2["nested"].(map[string]interface{})
 		sysMap["protos"] = map[string]interface{}{
-			"server": d3,
+			"server": protoMsgJson,
 		}
 	}
 
