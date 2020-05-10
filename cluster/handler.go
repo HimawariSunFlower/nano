@@ -468,13 +468,15 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		case *acceptor:
 			v.lastMid = lastMid
 		}
-
+		start := time.Now().Unix()
 		result := handler.Method.Func.Call(args)
 		if len(result) > 0 {
 			if err := result[0].Interface(); err != nil {
 				log.Println(fmt.Sprintf("Service %s error: %+v", msg.Route, err))
 			}
 		}
+		end := time.Now().Unix()
+		log.Println(fmt.Sprintf("--%s time:%d", handler.Method.Func.String(), end-start))
 	}
 	var serCase *component.Service
 
