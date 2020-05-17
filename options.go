@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/lonng/nano/session"
+
 	"github.com/lonng/nano/cluster"
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/internal/env"
@@ -60,6 +62,20 @@ func WithGrpcOptions(opts ...grpc.DialOption) Option {
 func WithComponents(components *component.Components) Option {
 	return func(opt *cluster.Options) {
 		opt.Components = components
+	}
+}
+
+// 前置处理函数
+func WithBefore(funcBefore func(session *session.Session) bool) Option {
+	return func(opt *cluster.Options) {
+		opt.FuncBefore = funcBefore
+	}
+}
+
+// 后置处理函数
+func WithAfter(funcAfter func(session *session.Session) bool) Option {
+	return func(opt *cluster.Options) {
+		opt.FuncAfter = funcAfter
 	}
 }
 

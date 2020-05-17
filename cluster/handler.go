@@ -468,16 +468,34 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		case *acceptor:
 			v.lastMid = lastMid
 		}
-		log.Println(fmt.Sprintf("--%s time start ----", handler.Method.Func.String()))
+
 		start := time.Now().Unix()
+		if env.Debug {
+			log.Println(fmt.Sprintf("--%s time start ----", handler.Method.Func.String()))
+		}
+		//前置处理
+		if h.currentNode.FuncBefore != nil && !h.currentNode.FuncBefore(session) {
+			if env.Debug {
+				log.Println(fmt.Sprintf("--%s FuncBefore exit ", handler.Method.Func.String()))
+			}
+			return
+		}
+
 		result := handler.Method.Func.Call(args)
 		if len(result) > 0 {
 			if err := result[0].Interface(); err != nil {
 				log.Println(fmt.Sprintf("Service %s error: %+v", msg.Route, err))
 			}
 		}
-		end := time.Now().Unix()
-		log.Println(fmt.Sprintf("--%s time end:%d", handler.Method.Func.String(), end-start))
+		//后置处理
+		if h.currentNode.FuncAfter != nil {
+			h.currentNode.FuncAfter(session)
+		}
+
+		if env.Debug {
+			end := time.Now().Unix()
+			log.Println(fmt.Sprintf("--%s time end:%d", handler.Method.Func.String(), end-start))
+		}
 	}
 	var serCase *component.Service
 
