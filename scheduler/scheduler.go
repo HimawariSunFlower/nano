@@ -55,7 +55,9 @@ var (
 func try(f func()) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(fmt.Sprintf("Handle message panic: %+v\n%s", err, debug.Stack()))
+			errInfo := fmt.Sprintf("Handle message panic: %+v\n%s", err, debug.Stack())
+			log.Println(errInfo)
+			fmt.Println("--panic--", errInfo)
 		}
 	}()
 	f()
