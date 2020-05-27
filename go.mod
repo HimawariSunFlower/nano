@@ -14,6 +14,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8
 	github.com/pingcap/errors v0.11.4
+	github.com/sirupsen/logrus v1.6.0
 	github.com/urfave/cli v1.20.1-0.20190203184040-693af58b4d51
 	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529 // indirect
 	golang.org/x/exp v0.0.0-20190510132918-efd6b22b2522 // indirect

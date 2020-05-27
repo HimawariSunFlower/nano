@@ -21,23 +21,29 @@
 package log
 
 import (
-	"log"
-	"os"
+	//"log"
+	//"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Logger represents  the log interface
 type Logger interface {
 	Println(v ...interface{})
+	Error(v ...interface{})
 	Fatal(v ...interface{})
 	Fatalf(format string, v ...interface{})
 }
 
 func init() {
-	SetLogger(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
+	//SetLogger(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
+	//框架增加错误日志级别输出
+	SetLogger(log.StandardLogger())
 }
 
 var (
 	Println func(v ...interface{})
+	Error   func(v ...interface{})
 	Fatal   func(v ...interface{})
 	Fatalf  func(format string, v ...interface{})
 )
@@ -48,6 +54,7 @@ func SetLogger(logger Logger) {
 		return
 	}
 	Println = logger.Println
+	Error = logger.Error
 	Fatal = logger.Fatal
 	Fatalf = logger.Fatalf
 }
