@@ -460,6 +460,8 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		log.Println(fmt.Sprintf("UID=%d, Message={%s}, Data=%+v", session.UID(), msg.String(), data))
 	}
 
+	session.Set("route", msg.Route)
+
 	args := []reflect.Value{handler.Receiver, reflect.ValueOf(session), reflect.ValueOf(data)}
 	task := func() {
 		switch v := session.NetworkEntity().(type) {
