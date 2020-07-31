@@ -121,7 +121,7 @@ func (n *Node) Startup() error {
 				addr = ":3251"
 			}
 			//old := n.ClientAddr
-			log.Println(fmt.Sprintf("Startup *Nano TestTcp server* ,service address :3251"))
+			log.Println(fmt.Sprintf("Startup *Nano TestTcp server* ,service address %s", addr))
 			go func() {
 				n.ClientAddr = addr
 				n.listenAndServe()
