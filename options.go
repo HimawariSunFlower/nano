@@ -114,6 +114,13 @@ func WithTestTcp() Option {
 	}
 }
 
+// WithTestTcp
+func WithTcpAddr(addr string) Option {
+	return func(_ *cluster.Options) {
+		env.TcpAddr = addr
+	}
+}
+
 // SetDictionary sets routes map
 func WithDictionary(dict map[string]uint16) Option {
 	return func(_ *cluster.Options) {

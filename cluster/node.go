@@ -116,10 +116,14 @@ func (n *Node) Startup() error {
 		}()
 		//开测试模块
 		if env.TestTcp {
+			addr := env.TcpAddr
+			if addr == "" {
+				addr = ":3251"
+			}
 			//old := n.ClientAddr
 			log.Println(fmt.Sprintf("Startup *Nano TestTcp server* ,service address :3251"))
 			go func() {
-				n.ClientAddr = ":3251"
+				n.ClientAddr = addr
 				n.listenAndServe()
 			}()
 		}

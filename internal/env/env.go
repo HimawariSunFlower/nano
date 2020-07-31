@@ -43,6 +43,7 @@ var (
 	RouteDict  map[string]uint16
 
 	TestTcp bool
+	TcpAddr string //tcp监听端口
 
 	// timerPrecision indicates the precision of timer, default is time.Second
 	TimerPrecision = time.Second
