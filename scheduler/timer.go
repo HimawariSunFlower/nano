@@ -67,6 +67,7 @@ type (
 		interval  time.Duration  // execution interval
 		condition TimerCondition // condition to cron job execution
 		elapse    int64          // total elapse time
+		lastTime  int64          // 适应改时间的时针
 		closed    int32          // is timer closed
 		counter   int            // counter
 	}
@@ -128,15 +129,26 @@ func cron() {
 			}
 
 			// execute job
-			if t.createAt+t.elapse <= unn {
+			if t.lastTime+int64(t.interval) <= unn {
 				safecall(id, t.fn)
-				t.elapse += int64(t.interval)
+				t.lastTime = unn
 
 				// update timer counter
 				if t.counter != infinite && t.counter > 0 {
 					t.counter--
 				}
 			}
+
+			// if t.createAt+t.elapse <= unn {
+			// 	safecall(id, t.fn)
+			// 	t.elapse += int64(t.interval)//改时间时,会无限执行
+
+			// 	// update timer counter
+			// 	if t.counter != infinite && t.counter > 0 {
+			// 		t.counter--
+			// 	}
+			// }
+
 		}
 
 		if t.counter == 0 {
@@ -184,7 +196,8 @@ func NewCountTimer(interval time.Duration, count int, fn TimerFunc) *Timer {
 		fn:       fn,
 		createAt: time.Now().UnixNano(),
 		interval: interval,
-		elapse:   int64(interval), // first execution will be after interval
+		elapse:   int64(interval),       // first execution will be after interval
+		lastTime: time.Now().UnixNano(), //最后执行时间
 		counter:  count,
 	}
 
@@ -215,4 +228,14 @@ func NewCondTimer(condition TimerCondition, fn TimerFunc) *Timer {
 	t.condition = condition
 
 	return t
+}
+
+//往前调时间,调整所有定时器上次触发时间为当前
+func OnChangeTimeAhead() {
+	PushTask(func() {
+		unn := time.Now().UnixNano()
+		for _, t := range timerManager.timers {
+			t.lastTime = unn
+		}
+	})
 }
