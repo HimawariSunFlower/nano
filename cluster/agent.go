@@ -39,15 +39,13 @@ import (
 )
 
 const (
-	agentWriteBacklog = 16
+	agentWriteBacklog = 100 //原16,调高缓存
 )
 
 var (
 	// ErrBrokenPipe represents the low-level connection has broken.
 	ErrBrokenPipe = errors.New("broken low-level pipe")
 	// ErrBufferExceed indicates that the current session buffer is full and
-	// can not receive more data.
-	ErrBufferExceed = errors.New("session send buffer exceed")
 )
 
 type (
@@ -118,9 +116,6 @@ func (a *agent) Push(route string, v interface{}) error {
 		return ErrBrokenPipe
 	}
 
-	if len(a.chSend) >= agentWriteBacklog {
-		return ErrBufferExceed
-	}
 	//Group 群发消息,提前编码,使用参数route 为路由
 	_, ok := v.([]byte)
 	if env.ProtoRoute && !ok {
@@ -178,10 +173,6 @@ func (a *agent) ResponseMid(mid uint64, v interface{}) error {
 
 	if mid <= 0 {
 		return ErrSessionOnNotify
-	}
-
-	if len(a.chSend) >= agentWriteBacklog {
-		return ErrBufferExceed
 	}
 
 	if env.Debug {
