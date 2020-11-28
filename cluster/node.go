@@ -54,8 +54,8 @@ type Options struct {
 	IsWebsocket    bool
 	TSLCertificate string
 	TSLKey         string
-	FuncBefore     func(session *session.Session) bool
-	FuncAfter      func(session *session.Session) bool
+	FuncBefore     func(session *session.Session, msg interface{}) bool
+	FuncAfter      func(session *session.Session, msg interface{}) bool
 }
 
 // Node represents a node in nano cluster, which will contains a group of services.
