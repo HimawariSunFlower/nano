@@ -444,8 +444,12 @@ func (s *Session) AddCallTime(name string) int64 {
 
 func (s *Session) FormatCallTime() string {
 	out := ""
+	var last int64
 	for i, node := range s.callTimes {
-		out += fmt.Sprintf("%d,%s: %d / ", i+1, node.Name, node.Diff)
+		diff := node.Diff - last
+		out += fmt.Sprintf("%d,%s: %d ; ", i+1, node.Name, diff)
+		last = node.Diff
 	}
+	out += fmt.Sprintf("all: %d ; ", last)
 	return out
 }
