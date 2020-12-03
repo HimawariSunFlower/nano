@@ -79,6 +79,15 @@ func WithAfter(funcAfter func(session *session.Session, msg interface{}) bool) O
 	}
 }
 
+// 流量控制
+func WithRateLimit(limit int, interval time.Duration) Option {
+	return func(_ *cluster.Options) {
+		if limit > 0 {
+			env.RateLimit = env.NewRateLimitingMaker(limit, interval)
+		}
+	}
+}
+
 // WithHeartbeatInterval sets Heartbeat time interval
 func WithHeartbeatInterval(d time.Duration) Option {
 	return func(_ *cluster.Options) {

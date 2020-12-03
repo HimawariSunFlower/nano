@@ -101,6 +101,7 @@ type LocalHandler struct {
 
 	pipeline    pipeline.Pipeline
 	currentNode *Node
+	rateLimiter *env.RateLimiter
 }
 
 func NewHandler(currentNode *Node, pipeline pipeline.Pipeline) *LocalHandler {
@@ -111,6 +112,7 @@ func NewHandler(currentNode *Node, pipeline pipeline.Pipeline) *LocalHandler {
 		remoteServices:       map[string][]*clusterpb.MemberInfo{},
 		pipeline:             pipeline,
 		currentNode:          currentNode,
+		rateLimiter:          env.NewRateLimiter(env.RateLimit),
 	}
 
 	return h
@@ -274,8 +276,15 @@ func (h *LocalHandler) handle(conn net.Conn) {
 			continue
 		}
 
+		now := time.Now()
 		// process all packet
 		for i := range packets {
+			if h.rateLimiter != nil {
+				if h.rateLimiter.ShouldRateLimit(now) {
+					log.Println("Receive packets exceed rate limit!")
+					return
+				}
+			}
 			if err := h.processPacket(agent, packets[i]); err != nil {
 				log.Println(err.Error())
 				return
