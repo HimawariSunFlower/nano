@@ -197,6 +197,7 @@ func (a *agent) Close() error {
 		return ErrCloseClosedSession
 	}
 	a.setStatus(statusClosed)
+	a.session.Deattach()
 
 	if env.Debug {
 		log.Println(fmt.Sprintf("Session closed, ID=%d, UID=%d, IP=%s",

@@ -427,6 +427,11 @@ func (s *Session) Clear() {
 	s.data = map[string]interface{}{}
 }
 
+func (s *Session) Deattach() {
+	s.entity = nil
+	Clear()
+}
+
 //-----用于统计各节点性能-----
 //重置打点时间
 func (s *Session) ResetCallTime() {

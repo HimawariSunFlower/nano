@@ -249,7 +249,7 @@ func (h *LocalHandler) handle(conn net.Conn) {
 				log.Println("Notify remote server success", remote)
 			}
 		}
-
+		h.currentNode.removeSession(agent.session)
 		agent.Close()
 		if env.Debug {
 			log.Println(fmt.Sprintf("Session read goroutine exit, SessionID=%d, UID=%d", agent.session.ID(), agent.session.UID()))
