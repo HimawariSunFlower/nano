@@ -429,7 +429,7 @@ func (s *Session) Clear() {
 
 func (s *Session) Deattach() {
 	s.entity = nil
-	Clear()
+	s.Clear()
 }
 
 //-----用于统计各节点性能-----
