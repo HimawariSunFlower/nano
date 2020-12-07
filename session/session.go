@@ -140,7 +140,10 @@ func (s *Session) Bind(uid int64) error {
 // Close terminate current session, session related data will not be released,
 // all related data should be Clear explicitly in Session closed callback
 func (s *Session) Close() {
-	s.entity.Close()
+	if s.entity != nil {
+		s.entity.Close()
+	}
+
 }
 
 // RemoteAddr returns the remote network address.
@@ -429,7 +432,11 @@ func (s *Session) Clear() {
 
 func (s *Session) Deattach() {
 	s.entity = nil
-	s.Clear()
+	s.Lock()
+	defer s.Unlock()
+	for k := range s.data {
+		delete(s.data, k)
+	}
 }
 
 //-----用于统计各节点性能-----
