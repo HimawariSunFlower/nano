@@ -41,6 +41,7 @@ import (
 	"github.com/lonng/nano/internal/log"
 	"github.com/lonng/nano/internal/message"
 	"github.com/lonng/nano/internal/packet"
+	"github.com/lonng/nano/metrics"
 	"github.com/lonng/nano/pipeline"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
@@ -112,7 +113,7 @@ func NewHandler(currentNode *Node, pipeline pipeline.Pipeline) *LocalHandler {
 		remoteServices:       map[string][]*clusterpb.MemberInfo{},
 		pipeline:             pipeline,
 		currentNode:          currentNode,
-		rateLimiter:          env.NewRateLimiter(env.RateLimit),
+		rateLimiter:          env.NewRateLimiter(currentNode.RateLimit),
 	}
 
 	return h
@@ -281,6 +282,7 @@ func (h *LocalHandler) handle(conn net.Conn) {
 		for i := range packets {
 			if h.rateLimiter != nil {
 				if h.rateLimiter.ShouldRateLimit(now) {
+					metrics.ReportExceededRateLimiting(h.currentNode.MetricsReporters)
 					log.Println("Receive packets exceed rate limit!")
 					return
 				}
@@ -444,6 +446,7 @@ func (h *LocalHandler) handleWS(conn *websocket.Conn) {
 }
 
 func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, session *session.Session, msg *message.Message) {
+	org_start := time.Now().UnixNano()
 	if pipe := h.pipeline; pipe != nil {
 		err := pipe.Inbound().Process(session, msg)
 		if err != nil {
@@ -470,9 +473,13 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 	}
 
 	session.Set("route", msg.Route)
-
+	fmt.Printf("%s\n", msg.Route)
 	args := []reflect.Value{handler.Receiver, reflect.ValueOf(session), reflect.ValueOf(data)}
+
 	task := func() {
+		os := org_start
+
+		metrics.ReportMessageProcessDelay(os, h.currentNode.MetricsReporters)
 		switch v := session.NetworkEntity().(type) {
 		case *agent:
 			v.lastMid = lastMid
@@ -480,7 +487,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 			v.lastMid = lastMid
 		}
 
-		start := time.Now().Unix()
+		start := time.Now().UnixNano()
 		if env.Debug {
 			log.Println(fmt.Sprintf("--%s time start ----", handler.Method.Func.String()))
 		}
@@ -493,6 +500,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		}
 
 		result := handler.Method.Func.Call(args)
+		metrics.ReportTiming(os, h.currentNode.MetricsReporters)
 		if len(result) > 0 {
 			if err := result[0].Interface(); err != nil {
 				log.Println(fmt.Sprintf("Service %s error: %+v", msg.Route, err))

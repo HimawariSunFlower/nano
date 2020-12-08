@@ -36,6 +36,7 @@ import (
 	"github.com/lonng/nano/internal/env"
 	"github.com/lonng/nano/internal/log"
 	"github.com/lonng/nano/internal/message"
+	"github.com/lonng/nano/metrics"
 	"github.com/lonng/nano/pipeline"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
@@ -44,18 +45,21 @@ import (
 
 // Options contains some configurations for current node
 type Options struct {
-	Pipeline       pipeline.Pipeline
-	IsMaster       bool
-	AdvertiseAddr  string
-	RetryInterval  time.Duration
-	ClientAddr     string
-	Components     *component.Components
-	Label          string
-	IsWebsocket    bool
-	TSLCertificate string
-	TSLKey         string
-	FuncBefore     func(session *session.Session, msg interface{}) bool
-	FuncAfter      func(session *session.Session, msg interface{}) bool
+	Pipeline         pipeline.Pipeline
+	IsMaster         bool
+	AdvertiseAddr    string
+	RetryInterval    time.Duration
+	ClientAddr       string
+	Components       *component.Components
+	Label            string
+	IsWebsocket      bool
+	TSLCertificate   string
+	TSLKey           string
+	FuncBefore       func(session *session.Session, msg interface{}) bool
+	FuncAfter        func(session *session.Session, msg interface{}) bool
+	RateLimit        *env.RateLimitingMaker
+	MetricsReporters []metrics.Reporter
+	MetricsPeriod    time.Duration
 }
 
 // Node represents a node in nano cluster, which will contains a group of services.
@@ -127,9 +131,19 @@ func (n *Node) Startup() error {
 				n.listenAndServe()
 			}()
 		}
+
+		n.startMetrics()
 	}
 
 	return nil
+}
+
+func (n *Node) startMetrics() {
+	if len(n.Options.MetricsReporters) == 0 {
+		return
+	}
+
+	go metrics.ReportSysMetrics(n.Options.MetricsReporters, n.Options.MetricsPeriod)
 }
 
 func (n *Node) Handler() *LocalHandler {
@@ -305,6 +319,7 @@ func (n *Node) listenAndServeWSTLS() {
 func (n *Node) storeSession(s *session.Session) {
 	n.mu.Lock()
 	n.sessions[s.ID()] = s
+	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
 	n.mu.Unlock()
 }
 
@@ -312,6 +327,7 @@ func (n *Node) removeSession(s *session.Session) {
 	n.mu.Lock()
 	delete(n.sessions, s.ID())
 	n.mu.Unlock()
+	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
 }
 
 func (n *Node) findSession(sid int64) *session.Session {
@@ -416,6 +432,7 @@ func (n *Node) SessionClosed(_ context.Context, req *clusterpb.SessionClosedRequ
 	s, found := n.sessions[req.SessionId]
 	delete(n.sessions, req.SessionId)
 	n.mu.Unlock()
+	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
 	if found {
 		scheduler.PushTask(func() { session.Lifetime.Close(s) })
 	}
