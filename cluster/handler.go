@@ -409,6 +409,8 @@ func (h *LocalHandler) remoteProcess(session *session.Session, msg *message.Mess
 }
 
 func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
+	metrics.CountMessage()
+
 	var lastMid uint64
 	switch msg.Type {
 	case message.Request:
@@ -478,8 +480,9 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 
 	task := func() {
 		os := org_start
+		route := msg.Route
 
-		metrics.ReportMessageProcessDelay(os, h.currentNode.MetricsReporters)
+		metrics.ReportMessageProcessDelay(os, h.currentNode.MetricsReporters, route)
 		switch v := session.NetworkEntity().(type) {
 		case *agent:
 			v.lastMid = lastMid
@@ -500,7 +503,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		}
 
 		result := handler.Method.Func.Call(args)
-		metrics.ReportTiming(os, h.currentNode.MetricsReporters)
+		metrics.ReportTiming(os, h.currentNode.MetricsReporters, route)
 		if len(result) > 0 {
 			if err := result[0].Interface(); err != nil {
 				log.Println(fmt.Sprintf("Service %s error: %+v", msg.Route, err))

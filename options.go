@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/lonng/nano/metrics"
 	"github.com/lonng/nano/session"
 
 	"github.com/lonng/nano/cluster"
@@ -190,5 +191,15 @@ func WithTSLConfig(certificate, key string) Option {
 func WithLogger(l log.Logger) Option {
 	return func(opt *cluster.Options) {
 		log.SetLogger(l)
+	}
+}
+
+// Metrics
+func WithMetrics(reporters []metrics.Reporter, period time.Duration) Option {
+	return func(opt *cluster.Options) {
+		if len(reporters) > 0 {
+			opt.MetricsReporters = reporters
+			opt.MetricsPeriod = period
+		}
 	}
 }

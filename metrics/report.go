@@ -23,6 +23,9 @@ var (
 	ExceededRateLimiting = "exceeded_rate_limiting"
 
 	//MetricsStartTime = "metrics_start_time"
+
+	MessageCount = "metrics_message_count"
+	messageCount = 0
 )
 
 type Reporter interface {
@@ -31,22 +34,30 @@ type Reporter interface {
 	ReportGauge(metric string, tags map[string]string, value float64) error
 }
 
-func ReportTiming(start int64, reporters []Reporter) {
+func CountMessage() {
+	messageCount++
+}
+
+func ReportTiming(start int64, reporters []Reporter, route string) {
 	if len(reporters) > 0 {
-		//route := session.String("metrics_route")
 		elapsed := time.Since(time.Unix(0, start))
+		tags := map[string]string{
+			"route": route,
+		}
 		for _, r := range reporters {
-			r.ReportSummary(ResponseTime, map[string]string{}, float64(elapsed.Nanoseconds()))
+			r.ReportSummary(ResponseTime, tags, float64(elapsed.Nanoseconds()))
 		}
 	}
 }
 
-func ReportMessageProcessDelay(start int64, reporters []Reporter) {
+func ReportMessageProcessDelay(start int64, reporters []Reporter, route string) {
 	if len(reporters) > 0 {
-		//route := session.String("metrics_route")
 		elapsed := time.Since(time.Unix(0, start))
+		tags := map[string]string{
+			"route": route,
+		}
 		for _, r := range reporters {
-			r.ReportSummary(ProcessDelay, map[string]string{}, float64(elapsed.Nanoseconds()))
+			r.ReportSummary(ProcessDelay, tags, float64(elapsed.Nanoseconds()))
 		}
 	}
 }
@@ -67,6 +78,7 @@ func ReportSysMetrics(reporters []Reporter, period time.Duration) {
 			r.ReportGauge(Goroutines, map[string]string{}, float64(num))
 			r.ReportGauge(HeapSize, map[string]string{}, float64(m.Alloc))
 			r.ReportGauge(HeapObjects, map[string]string{}, float64(m.HeapObjects))
+			r.ReportGauge(MessageCount, map[string]string{}, float64(messageCount))
 		}
 
 		time.Sleep(period)
