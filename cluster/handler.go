@@ -475,7 +475,6 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 	}
 
 	session.Set("route", msg.Route)
-	fmt.Printf("%s\n", msg.Route)
 	args := []reflect.Value{handler.Receiver, reflect.ValueOf(session), reflect.ValueOf(data)}
 
 	task := func() {
