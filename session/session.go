@@ -432,11 +432,6 @@ func (s *Session) Clear() {
 
 func (s *Session) Deattach() {
 	s.entity = nil
-	s.Lock()
-	defer s.Unlock()
-	for k := range s.data {
-		delete(s.data, k)
-	}
 }
 
 //-----用于统计各节点性能-----
