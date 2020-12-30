@@ -193,7 +193,7 @@ func (a *agent) ResponseMid(mid uint64, v interface{}) error {
 // Close closes the agent, clean inner state and close low-level connection.
 // Any blocked Read or Write operations will be unblocked and return errors.
 func (a *agent) Close() error {
-	defer a.session.Deattach()
+	//defer a.session.Deattach()
 	if a.status() == statusClosed {
 		return ErrCloseClosedSession
 	}
