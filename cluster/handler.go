@@ -139,7 +139,7 @@ func (h *LocalHandler) register(comp component.Component, opts []component.Optio
 			//以控制器第二个参数 结构体名称,为路由
 			argTypeName := handler.Type.Elem().Name()
 			if _, exist := h.localHandlersArgName[argTypeName]; !exist {
-				log.Println(fmt.Sprintf("Proto Register local handler %s-%s", s.Name, argTypeName))
+				//log.Println(fmt.Sprintf("Proto Register local handler %s-%s", s.Name, argTypeName))
 				h.localHandlersArgName[argTypeName] = handler
 			} else {
 				doubleNames = append(doubleNames, n+"("+argTypeName+")")

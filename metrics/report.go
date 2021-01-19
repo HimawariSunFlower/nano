@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,7 +26,7 @@ var (
 	//MetricsStartTime = "metrics_start_time"
 
 	MessageCount = "metrics_message_count"
-	messageCount = 0
+	messageCount = int32(0)
 )
 
 type Reporter interface {
@@ -35,7 +36,7 @@ type Reporter interface {
 }
 
 func CountMessage() {
-	messageCount++
+	atomic.AddInt32(&messageCount, 1)
 }
 
 func ReportTiming(start int64, reporters []Reporter, route string) {
@@ -78,7 +79,7 @@ func ReportSysMetrics(reporters []Reporter, period time.Duration) {
 			r.ReportGauge(Goroutines, map[string]string{}, float64(num))
 			r.ReportGauge(HeapSize, map[string]string{}, float64(m.Alloc))
 			r.ReportGauge(HeapObjects, map[string]string{}, float64(m.HeapObjects))
-			r.ReportGauge(MessageCount, map[string]string{}, float64(messageCount))
+			r.ReportGauge(MessageCount, map[string]string{}, float64(atomic.LoadInt32(&messageCount)))
 		}
 
 		time.Sleep(period)
