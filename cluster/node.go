@@ -293,10 +293,10 @@ func (n *Node) listenAndServeWS() {
 	// 	log.Fatal(err.Error())
 	// }
 
-	listenConfig = net.ListenConfig{
+	listenConfig := net.ListenConfig{
 		Control: Control,
 	}
-	server := &Server{Addr: n.ClientAddr, Handler: nil}
+	server := &http.Server{Addr: n.ClientAddr, Handler: nil}
 	ln, err := listenConfig.Listen(context.Background(), "tcp", server.Addr)
 	if err != nil {
 		log.Fatal(err.Error())
