@@ -302,7 +302,10 @@ func (n *Node) listenAndServeWS() {
 		log.Fatal(err.Error())
 	}
 
-	server.Serve(ln)
+	err = server.Serve(ln)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
 
 func (n *Node) listenAndServeWSTLS() {
