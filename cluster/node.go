@@ -255,7 +255,10 @@ EXIT:
 
 // Enable current server accept connection
 func (n *Node) listenAndServe() {
-	listener, err := net.Listen("tcp", n.ClientAddr)
+	listenConfig := net.ListenConfig{
+		Control: Control,
+	}
+	listener, err := listenConfig.Listen(context.Background(), "tcp", n.ClientAddr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
