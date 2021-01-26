@@ -426,7 +426,6 @@ func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
 		if !found {
 			h.remoteProcess(agent.session, msg, false)
 		} else {
-			log.Println("recv message :" + msg.Route)
 			h.localProcess(handler, lastMid, agent.session, msg)
 		}
 	} else {

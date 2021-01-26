@@ -76,6 +76,7 @@ type Node struct {
 
 	mu       sync.RWMutex
 	sessions map[int64]*session.Session
+	listener []*net.Listener
 }
 
 func (n *Node) Startup() error {
@@ -225,6 +226,10 @@ func (n *Node) Shutdown() {
 		components[i].Comp.BeforeShutdown()
 	}
 
+	for _, v := range n.listener {
+		v.Close()
+	}
+
 	// reverse call `Shutdown` hooks
 	for i := length - 1; i >= 0; i-- {
 		components[i].Comp.Shutdown()
@@ -263,6 +268,7 @@ func (n *Node) listenAndServe() {
 		log.Fatal(err.Error())
 	}
 
+	n.listener = append(n.listener, &listener)
 	defer listener.Close()
 	for {
 		conn, err := listener.Accept()
@@ -309,6 +315,9 @@ func (n *Node) listenAndServeWS() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	defer ln.Close()
+	n.listener = append(n.listener, &ln)
 }
 
 func (n *Node) listenAndServeWSTLS() {
@@ -328,10 +337,49 @@ func (n *Node) listenAndServeWSTLS() {
 		n.handler.handleWS(conn)
 	})
 
-	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+	// if err := http.ListenAndServe(n.ClientAddr, nil); err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+
+	listenConfig := net.ListenConfig{
+		Control: Control,
+	}
+	server := &http.Server{Addr: n.ClientAddr, Handler: nil}
+	ln, err := listenConfig.Listen(context.Background(), "tcp", server.Addr)
+	if err != nil {
 		log.Fatal(err.Error())
 	}
+	// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+	err = server.ServeTLS(ln, n.TSLCertificate, n.TSLKey)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	defer ln.Close()
+	n.listener = append(n.listener, &ln)
 }
+
+// func (n *Node) listenAndServeWSTLS() {
+// 	var upgrader = websocket.Upgrader{
+// 		ReadBufferSize:  1024,
+// 		WriteBufferSize: 1024,
+// 		CheckOrigin:     env.CheckOrigin,
+// 	}
+
+// 	http.HandleFunc("/"+strings.TrimPrefix(env.WSPath, "/"), func(w http.ResponseWriter, r *http.Request) {
+// 		conn, err := upgrader.Upgrade(w, r, nil)
+// 		if err != nil {
+// 			log.Println(fmt.Sprintf("Upgrade failure, URI=%s, Error=%s", r.RequestURI, err.Error()))
+// 			return
+// 		}
+
+// 		n.handler.handleWS(conn)
+// 	})
+
+// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+// 		log.Fatal(err.Error())
+// 	}
+// }
 
 func (n *Node) storeSession(s *session.Session) {
 	n.mu.Lock()
