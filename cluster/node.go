@@ -74,9 +74,9 @@ type Node struct {
 	server    *grpc.Server
 	rpcClient *rpcClient
 
-	mu       sync.RWMutex
-	sessions map[int64]*session.Session
-	listener []*net.Listener
+	mu         sync.RWMutex
+	sessions   map[int64]*session.Session
+	httpServer []*http.Server
 }
 
 func (n *Node) Startup() error {
@@ -226,10 +226,9 @@ func (n *Node) Shutdown() {
 		components[i].Comp.BeforeShutdown()
 	}
 
-	for _, v := range n.listener {
-		v.Close()
+	for _, v := range n.httpServer {
+		v.Shutdown(nil)
 	}
-
 	// reverse call `Shutdown` hooks
 	for i := length - 1; i >= 0; i-- {
 		components[i].Comp.Shutdown()
@@ -268,7 +267,6 @@ func (n *Node) listenAndServe() {
 		log.Fatal(err.Error())
 	}
 
-	n.listener = append(n.listener, &listener)
 	defer listener.Close()
 	for {
 		conn, err := listener.Accept()
@@ -311,13 +309,11 @@ func (n *Node) listenAndServeWS() {
 		log.Fatal(err.Error())
 	}
 
+	n.httpServer = append(n.httpServer, server)
 	err = server.Serve(ln)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-
-	defer ln.Close()
-	n.listener = append(n.listener, &ln)
 }
 
 func (n *Node) listenAndServeWSTLS() {
@@ -349,14 +345,13 @@ func (n *Node) listenAndServeWSTLS() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	n.httpServer = append(n.httpServer, server)
 	// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
 	err = server.ServeTLS(ln, n.TSLCertificate, n.TSLKey)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	defer ln.Close()
-	n.listener = append(n.listener, &ln)
 }
 
 // func (n *Node) listenAndServeWSTLS() {
