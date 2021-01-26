@@ -77,15 +77,19 @@ type Node struct {
 	mu         sync.RWMutex
 	sessions   map[int64]*session.Session
 	httpServer []*http.Server
+	running    bool
+	listener   net.Listener
 }
 
 func (n *Node) Startup() error {
 	if n.ServiceAddr == "" {
 		return errors.New("service address cannot be empty in master node")
 	}
+	n.running = true
 	n.sessions = map[int64]*session.Session{}
 	n.cluster = newCluster(n)
 	n.handler = NewHandler(n, n.Pipeline)
+	n.listener = nil
 	components := n.Components.List()
 	for _, c := range components {
 		err := n.handler.register(c.Comp, c.Opts)
@@ -219,6 +223,7 @@ func (n *Node) initNode() error {
 // Shutdowns all components registered by application, that
 // call by reverse order against register
 func (n *Node) Shutdown() {
+	n.running = false
 	// reverse call `BeforeShutdown` hooks
 	components := n.Components.List()
 	length := len(components)
@@ -226,8 +231,11 @@ func (n *Node) Shutdown() {
 		components[i].Comp.BeforeShutdown()
 	}
 
+	if n.listener != nil {
+		n.listener.Close()
+	}
 	for _, v := range n.httpServer {
-		v.Shutdown(nil)
+		v.Shutdown(context.Background())
 	}
 	// reverse call `Shutdown` hooks
 	for i := length - 1; i >= 0; i-- {
@@ -262,13 +270,15 @@ func (n *Node) listenAndServe() {
 	listenConfig := net.ListenConfig{
 		Control: Control,
 	}
+
 	listener, err := listenConfig.Listen(context.Background(), "tcp", n.ClientAddr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	n.listener = listener
 
 	defer listener.Close()
-	for {
+	for n.running {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err.Error())
@@ -311,7 +321,7 @@ func (n *Node) listenAndServeWS() {
 
 	n.httpServer = append(n.httpServer, server)
 	err = server.Serve(ln)
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err.Error())
 	}
 }
@@ -345,10 +355,11 @@ func (n *Node) listenAndServeWSTLS() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
 	n.httpServer = append(n.httpServer, server)
 	// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
 	err = server.ServeTLS(ln, n.TSLCertificate, n.TSLKey)
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err.Error())
 	}
 
