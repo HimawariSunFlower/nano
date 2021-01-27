@@ -120,7 +120,7 @@ func (n *Node) Startup() error {
 					n.listenAndServeWS()
 				}
 			} else {
-				n.listenAndServe()
+				n.listenAndServe(n.ClientAddr)
 			}
 		}()
 		//开测试模块
@@ -131,9 +131,9 @@ func (n *Node) Startup() error {
 			}
 			//old := n.ClientAddr
 			log.Println(fmt.Sprintf("Startup *Nano TestTcp server* ,service address %s", addr))
-			n.ClientAddr = addr
+			//n.ClientAddr = addr
 			go func() {
-				n.listenAndServe()
+				n.listenAndServe(addr)
 			}()
 		}
 
@@ -266,12 +266,12 @@ EXIT:
 }
 
 // Enable current server accept connection
-func (n *Node) listenAndServe() {
+func (n *Node) listenAndServe(addr string) {
 	listenConfig := net.ListenConfig{
 		Control: Control,
 	}
 
-	listener, err := listenConfig.Listen(context.Background(), "tcp", n.ClientAddr)
+	listener, err := listenConfig.Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
