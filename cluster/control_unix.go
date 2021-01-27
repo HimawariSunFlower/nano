@@ -15,7 +15,7 @@ func Control(network, address string, c syscall.RawConn) (err error) {
 		if err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEADDR, 1); err != nil {
 			panic(err)
 		}
-		// // SO_REUSEPORT
+		// SO_REUSEPORT
 		// if err = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
 		// 	panic(err)
 		// }

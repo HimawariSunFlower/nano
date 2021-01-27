@@ -74,17 +74,22 @@ type Node struct {
 	server    *grpc.Server
 	rpcClient *rpcClient
 
-	mu       sync.RWMutex
-	sessions map[int64]*session.Session
+	mu         sync.RWMutex
+	sessions   map[int64]*session.Session
+	httpServer []*http.Server
+	running    bool
+	listener   net.Listener
 }
 
 func (n *Node) Startup() error {
 	if n.ServiceAddr == "" {
 		return errors.New("service address cannot be empty in master node")
 	}
+	n.running = true
 	n.sessions = map[int64]*session.Session{}
 	n.cluster = newCluster(n)
 	n.handler = NewHandler(n, n.Pipeline)
+	n.listener = nil
 	components := n.Components.List()
 	for _, c := range components {
 		err := n.handler.register(c.Comp, c.Opts)
@@ -115,7 +120,7 @@ func (n *Node) Startup() error {
 					n.listenAndServeWS()
 				}
 			} else {
-				n.listenAndServe()
+				n.listenAndServe(n.ClientAddr)
 			}
 		}()
 		//开测试模块
@@ -126,9 +131,9 @@ func (n *Node) Startup() error {
 			}
 			//old := n.ClientAddr
 			log.Println(fmt.Sprintf("Startup *Nano TestTcp server* ,service address %s", addr))
-			n.ClientAddr = addr
+			//n.ClientAddr = addr
 			go func() {
-				n.listenAndServe()
+				n.listenAndServe(addr)
 			}()
 		}
 
@@ -218,6 +223,7 @@ func (n *Node) initNode() error {
 // Shutdowns all components registered by application, that
 // call by reverse order against register
 func (n *Node) Shutdown() {
+	n.running = false
 	// reverse call `BeforeShutdown` hooks
 	components := n.Components.List()
 	length := len(components)
@@ -225,6 +231,12 @@ func (n *Node) Shutdown() {
 		components[i].Comp.BeforeShutdown()
 	}
 
+	if n.listener != nil {
+		n.listener.Close()
+	}
+	for _, v := range n.httpServer {
+		v.Shutdown(context.Background())
+	}
 	// reverse call `Shutdown` hooks
 	for i := length - 1; i >= 0; i-- {
 		components[i].Comp.Shutdown()
@@ -254,17 +266,19 @@ EXIT:
 }
 
 // Enable current server accept connection
-func (n *Node) listenAndServe() {
+func (n *Node) listenAndServe(addr string) {
 	listenConfig := net.ListenConfig{
 		Control: Control,
 	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", n.ClientAddr)
+
+	listener, err := listenConfig.Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	n.listener = listener
 
 	defer listener.Close()
-	for {
+	for n.running {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err.Error())
@@ -305,8 +319,9 @@ func (n *Node) listenAndServeWS() {
 		log.Fatal(err.Error())
 	}
 
+	n.httpServer = append(n.httpServer, server)
 	err = server.Serve(ln)
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err.Error())
 	}
 }
@@ -328,10 +343,49 @@ func (n *Node) listenAndServeWSTLS() {
 		n.handler.handleWS(conn)
 	})
 
-	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+	// if err := http.ListenAndServe(n.ClientAddr, nil); err != nil {
+	// 	log.Fatal(err.Error())
+	// }
+
+	listenConfig := net.ListenConfig{
+		Control: Control,
+	}
+	server := &http.Server{Addr: n.ClientAddr, Handler: nil}
+	ln, err := listenConfig.Listen(context.Background(), "tcp", server.Addr)
+	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	n.httpServer = append(n.httpServer, server)
+	// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+	err = server.ServeTLS(ln, n.TSLCertificate, n.TSLKey)
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal(err.Error())
+	}
+
 }
+
+// func (n *Node) listenAndServeWSTLS() {
+// 	var upgrader = websocket.Upgrader{
+// 		ReadBufferSize:  1024,
+// 		WriteBufferSize: 1024,
+// 		CheckOrigin:     env.CheckOrigin,
+// 	}
+
+// 	http.HandleFunc("/"+strings.TrimPrefix(env.WSPath, "/"), func(w http.ResponseWriter, r *http.Request) {
+// 		conn, err := upgrader.Upgrade(w, r, nil)
+// 		if err != nil {
+// 			log.Println(fmt.Sprintf("Upgrade failure, URI=%s, Error=%s", r.RequestURI, err.Error()))
+// 			return
+// 		}
+
+// 		n.handler.handleWS(conn)
+// 	})
+
+// 	if err := http.ListenAndServeTLS(n.ClientAddr, n.TSLCertificate, n.TSLKey, nil); err != nil {
+// 		log.Fatal(err.Error())
+// 	}
+// }
 
 func (n *Node) storeSession(s *session.Session) {
 	n.mu.Lock()
